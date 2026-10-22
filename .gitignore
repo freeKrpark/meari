@@ -21,6 +21,17 @@ profile.cov
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+
+# Meari: never commit keys or local state
+*.key
+*.pem
+*.db
+*.sqlite
+.env
+
+# build output
+/bin/
+
 # Go workspace file
 go.work
 go.work.sum
