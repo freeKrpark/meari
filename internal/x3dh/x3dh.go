@@ -76,6 +76,11 @@ func Initiate(alice *Identity, bundle *Bundle) (*Result, *InitialMessage, error)
 	return res, msg, nil
 }
 
+// Respond runs Bob's side of X3DH. opk must be nil when msg did not use a
+// one-time prekey.
+//
+// Respond does not delete opk. On success the caller must delete it
+// permanently; otherwise a replayed initial message yields the same key again.
 func Respond(bob *Identity, spk *SignedPreKey, opk *OneTimePreKey, msg *InitialMessage) (*Result, error) {
 	if spk.ID != msg.SignedPreKeyID {
 		return nil, ErrPreKeyMismatch

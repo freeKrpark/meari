@@ -1,3 +1,9 @@
+// Package x3dh implements the X3DH key agreement
+// (https://signal.org/docs/specifications/x3dh/).
+//
+// Deviation from the spec: Go has no XEdDSA, so a Meari identity is two keys,
+// Ed25519 for signatures and X25519 for DH, instead of one Curve25519 key.
+
 package x3dh
 
 import (
