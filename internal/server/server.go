@@ -42,7 +42,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 func readBody(w http.ResponseWriter, r *http.Request, limit int) ([]byte, bool) {
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, int64(limit)))
+	body, err := readAllSized(http.MaxBytesReader(w, r.Body, int64(limit)), r.ContentLength, limit)
 	if err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
@@ -155,4 +155,15 @@ func (s *Server) ack(w http.ResponseWriter, r *http.Request, me auth.AccountID, 
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func readAllSized(r io.Reader, contentLength int64, limit int) ([]byte, error) {
+	if contentLength < 0 || contentLength > int64(limit) {
+		return io.ReadAll(r) // unknown or too large: MaxBytesReader decides
+	}
+	buf := make([]byte, contentLength)
+	if _, err := io.ReadFull(r, buf); err != nil {
+		return nil, err
+	}
+	return buf, nil
 }
