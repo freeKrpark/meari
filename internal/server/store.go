@@ -21,6 +21,7 @@ type Store interface {
 	Enqueue(to auth.AccountID, d api.Delivery, max int) error
 	Inbox(auth.AccountID) []api.Delivery
 	Ack(auth.AccountID, [api.MessageIDSize]byte) bool
+	Snapshot() StoreSnapshot
 }
 
 type MemoryStore struct {
