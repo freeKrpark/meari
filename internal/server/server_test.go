@@ -326,3 +326,39 @@ func TestLimits(t *testing.T) {
 	alice.mustDo(http.StatusAccepted, "POST", to, []byte("2"))
 	alice.mustDo(http.StatusTooManyRequests, "POST", to, []byte("3"))
 }
+
+func TestAckWipesMessageBytes(t *testing.T) {
+	for _, wipe := range []bool{true, false} {
+		store := NewMemoryStore()
+		store.WipeOnAck = wipe
+		var to auth.AccountID
+		d := api.Delivery{Data: []byte("opaque envelope")}
+		d.ID[0] = 1
+		if err := store.Enqueue(to, d, 10); err != nil {
+			t.Fatal(err)
+		}
+		held := store.inbox[to][0].Data // the store's own copy
+
+		if !store.Ack(to, d.ID) {
+			t.Fatal("ack failed")
+		}
+		wiped := bytes.Equal(held, make([]byte, len(held)))
+		if wiped != wipe {
+			t.Fatalf("WipeOnAck=%v, but bytes wiped=%v", wipe, wiped)
+		}
+	}
+}
+
+func TestInboxReturnsCopies(t *testing.T) {
+	store := NewMemoryStore()
+	var to auth.AccountID
+	d := api.Delivery{Data: []byte("opaque envelope")}
+	if err := store.Enqueue(to, d, 10); err != nil {
+		t.Fatal(err)
+	}
+	listed := store.Inbox(to)
+	store.Ack(to, d.ID)
+	if string(listed[0].Data) != "opaque envelope" {
+		t.Fatal("wiping on ack changed a copy already handed out")
+	}
+}

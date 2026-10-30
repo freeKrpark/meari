@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"errors"
 	"sync"
 
@@ -25,6 +26,8 @@ type Store interface {
 }
 
 type MemoryStore struct {
+	WipeOnAck bool
+
 	mu         sync.Mutex
 	identities map[auth.AccountID]x3dh.PublicIdentity
 	fallback   map[auth.AccountID][]byte
@@ -34,6 +37,7 @@ type MemoryStore struct {
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
+		WipeOnAck:  true,
 		identities: map[auth.AccountID]x3dh.PublicIdentity{},
 		fallback:   map[auth.AccountID][]byte{},
 		oneTime:    map[auth.AccountID][][]byte{},
@@ -87,7 +91,13 @@ func (s *MemoryStore) Enqueue(to auth.AccountID, d api.Delivery, max int) error 
 func (s *MemoryStore) Inbox(id auth.AccountID) []api.Delivery {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return append([]api.Delivery(nil), s.inbox[id]...)
+	out := make([]api.Delivery, len(s.inbox[id]))
+	for i, d := range s.inbox[id] {
+		d.Data = bytes.Clone(d.Data)
+		out[i] = d
+	}
+	return out
+
 }
 
 func (s *MemoryStore) Ack(id auth.AccountID, mid [api.MessageIDSize]byte) bool {
@@ -96,6 +106,9 @@ func (s *MemoryStore) Ack(id auth.AccountID, mid [api.MessageIDSize]byte) bool {
 	in := s.inbox[id]
 	for i, d := range in {
 		if d.ID == mid {
+			if s.WipeOnAck {
+				clear(d.Data)
+			}
 			s.inbox[id] = append(in[:i:i], in[i+1:]...)
 			return true
 		}
